@@ -1,0 +1,1 @@
+\def{A}{aardvark} \expandafter{\undef{A}}{\\def{A}{aardwolf}} \A{}
