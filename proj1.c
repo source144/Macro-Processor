@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
-#include "proj1.h"
 
 #define ESCAPE '\\'
 #define ARGUMENT '#'
@@ -13,6 +12,9 @@
 
 #define BRACE_OPEN_STR "{"
 #define BRACE_CLOSE_STR "}"
+
+#define WARN(format, ...) fprintf(stderr, "proj1: " format "\n", __VA_ARGS__)
+#define DIE(format, ...) WARN(format, __VA_ARGS__), exit(EXIT_FAILURE)
 
 #define NOT_FOUND 	-1
 #define DEF			0
@@ -25,6 +27,8 @@
 #define INIT_MACRO_CAPACITY 8
 #define PROTECTED_MACROS 6
 #define INIT_BUF 1024
+
+// TODO: Check for NULL pointers
 
 typedef struct
 {
@@ -265,7 +269,7 @@ node_t *createNode(char *data, node_t *next)
 
 	if (!(node = malloc(sizeof(node_t))) ||
 		!(str = calloc(len + 1, sizeof(char))))
-		DIE("%s", "Bad memory createNode");
+		DIE("%s", "Bad memory createNode\n");
 
 	for (i = 0; i < len; i++)
 		str[i] = data[i];
@@ -295,7 +299,7 @@ void push(stack_t *s, char *data)
 	}
 	else
 	{
-		DIE("%s", "Bad memory push");
+		DIE("%s", "Bad memory push\n");
 	}
 }
 
@@ -602,8 +606,6 @@ void processChunks(stack_t *s, macrolist_t *macros, stack_t *out)
 
 	while (s->head)
 	{
-		// TODO: check if head->data is null
-
 		macro_t *macro;
 		for (i = 0; i < macros->size; i++)
 		{
@@ -638,10 +640,8 @@ void processChunks(stack_t *s, macrolist_t *macros, stack_t *out)
 				free(pop(s));
 				free(pop(s));
 
-				temp1 = esc(filename); // TODO: fix
-				push(s, filename); // TODO: Escape
+				push(s, filename);
 				free(filename);
-				free(temp1);
 			}
 
 			temp1 = pop(s);
@@ -658,7 +658,7 @@ void processChunks(stack_t *s, macrolist_t *macros, stack_t *out)
 				if (isSpecialCharacter(s->head->data[1]) || isPreservedCharacter(s->head->data[1]))
 				{
 					temp1 = pop(s);
-					temp2 = esc(temp1); // TODO: fix
+					temp2 = esc(temp1);
 					push(out, temp2);
 					free(temp1);
 					free(temp2);
@@ -669,36 +669,31 @@ void processChunks(stack_t *s, macrolist_t *macros, stack_t *out)
 					switch (macroId)
 					{
 						case NOT_FOUND:
-							DIE("%s", "Invalid macro");
-							// TODO: Terminate program
+							DIE("%s", "Invalid macro\n");
 							break;
 
 						case DEF:
 							if (!s->head->next || !s->head->next->next)
 							{
-								DIE("%s", "Missing argument(s) for def");
-								// TODO: Terminate program
+								DIE("%s", "Missing argument(s) for def\n");
 							}
 
 							macroId = findMacro(s->head->next->data, macros);
 
 							if (macroId != NOT_FOUND)
 							{
-								DIE("%s", "Macro already defined");
-								// TODO: Terminate program
+								DIE("%s", "Macro already defined\n");
 							}
 
 							if (!isValidDefArg(s->head->next->data) ||
 								!isValidArg(s->head->next->next->data))
 							{
-								DIE("%s", "Bad argument(s) for def");
-								// TODO: Terminate program
+								DIE("%s", "Bad argument(s) for def\n");
 							}
 
 							if (!argIsAlnum(s->head->next->data))
 							{
-								DIE("%s", "New defenition requires alpha-numberic chars only");
-								// TODO: Terminate program
+								DIE("%s", "New defenition requires alpha-numberic chars only\n");
 							}
 
 							def(macros, s->head->next->data, s->head->next->next->data);
@@ -712,25 +707,22 @@ void processChunks(stack_t *s, macrolist_t *macros, stack_t *out)
 						case UNDEF:
 							if (!s->head->next)
 							{
-								DIE("%s", "Missing argument(s) for def");
-								// TODO: Terminate program
+								DIE("%s", "Missing argument(s) for def\n");
 							}
 
 							macroId = findMacro(s->head->next->data, macros);
 
 							if (macroId == NOT_FOUND)
 							{
-								DIE("%s", "Macro is not defined (can't undef)");
-								// TODO: Terminate program
+								DIE("%s", "Macro is not defined (can't undef)\n");
 							}
 
 							if (macroId < PROTECTED_MACROS)
 							{
-								DIE("%s", "Can't undef protected macros");
-								// TODO: Terminate program
+								DIE("%s", "Can't undef protected macros\n");
 							}
 
-							undef(macros, macroId); // TODO: CHECK IF FREES MEMORY
+							undef(macros, macroId);
 
 							free(pop(s));
 							free(pop(s));
@@ -741,16 +733,14 @@ void processChunks(stack_t *s, macrolist_t *macros, stack_t *out)
 							if (!s->head->next || !s->head->next->next ||
 								!s->head->next->next->next)
 							{
-								DIE("%s", "Missing argument(s) for if ifdef");
-								// TODO: Terminate program
+								DIE("%s", "Missing argument(s) for if ifdef\n");
 							}
 
 							if (!isValidArg(s->head->next->data) ||
 								!isValidArg(s->head->next->next->data) || 
 								!isValidArg(s->head->next->next->next->data))
 							{
-								DIE("%s", "Bad argument(s) for ifdef");
-								// TODO: Terminate program
+								DIE("%s", "Bad argument(s) for ifdef\n");
 							}
 
 							if (findMacro(s->head->next->data, macros) == NOT_FOUND)
@@ -775,16 +765,14 @@ void processChunks(stack_t *s, macrolist_t *macros, stack_t *out)
 							if (!s->head->next || !s->head->next->next ||
 								!s->head->next->next->next)
 							{
-								DIE("%s", "Missing argument(s) for if");
-								// TODO: Terminate program
+								DIE("%s", "Missing argument(s) for if\n");
 							}
 
 							if (!isValidArg(s->head->next->data) ||
 								!isValidArg(s->head->next->next->data) || 
 								!isValidArg(s->head->next->next->next->data))
 							{
-								DIE("%s", "Bad argument(s) for if");
-								// TODO: Terminate program
+								DIE("%s", "Bad argument(s) for if\n");
 							}
 
 							if (strlen(s->head->next->data) < 3)
@@ -807,14 +795,12 @@ void processChunks(stack_t *s, macrolist_t *macros, stack_t *out)
 						case INCLUDE:
 							if (!s->head->next)
 							{
-								DIE("%s", "Missing argument(s) for if include");
-								// TODO: Terminate program
+								DIE("%s", "Missing argument(s) for if include\n");
 							}
 							
 							if (!isValidArg(s->head->next->data))
 							{
-								DIE("%s", "Bad argument(s) for include");
-								// TODO: Terminate program
+								DIE("%s", "Bad argument(s) for include\n");
 							}
 
 							filename = removeBraces(s->head->next->data);
@@ -831,15 +817,13 @@ void processChunks(stack_t *s, macrolist_t *macros, stack_t *out)
 						case EXPANDAFTER:
 							if (!s->head->next || !s->head->next->next)
 							{
-								DIE("%s", "Missing argument(s) for expandafter");
-								// TODO: Terminate program
+								DIE("%s", "Missing argument(s) for expandafter\n");
 							}
 
 							if (!isValidArg(s->head->next->data) ||
 								!isValidArg(s->head->next->next->data))
 							{
-								DIE("%s", "Bad argument(s) for expandafter");
-								// TODO: Terminate program
+								DIE("%s", "Bad argument(s) for expandafter\n");
 							}
 
 							free(pop(s));
@@ -862,13 +846,12 @@ void processChunks(stack_t *s, macrolist_t *macros, stack_t *out)
 							beforeOut = createStack();
 
 							chunkString(before, beforeStack);
-							processChunks(beforeStack, macros, beforeOut); // FIXME: check this
+							processChunks(beforeStack, macros, beforeOut);
 
 							destroyStack(beforeStack);
 							beforeStack = createStack();
 							flipStack(beforeOut, beforeStack);
 
-							// TODO: destroy before
 							destroyString(before);
 							before = stackToString(beforeStack);
 
@@ -899,13 +882,11 @@ void processChunks(stack_t *s, macrolist_t *macros, stack_t *out)
 						default:
 							if (!s->head->next)
 							{
-								DIE("%s", "Missing argument(s) for custom macro");
-								// TODO: Terminate program
+								DIE("%s", "Missing argument(s) for custom macro\n");
 							}
 							if (!isValidArg(s->head->next->data))
 							{
-								DIE("%s", "Bad argument(s) for custom macro");
-								// TODO: Terminate program
+								DIE("%s", "Bad argument(s) for custom macro\n");
 							}
 
 							temp1 = removeBraces(s->head->next->data);
@@ -938,12 +919,8 @@ void processChunks(stack_t *s, macrolist_t *macros, stack_t *out)
 
 			default:
 				temp1 = pop(s);
-				temp2 = esc(temp1); // TODO FIX
-
 				push(out, temp1);
-
 				free(temp1);
-				free(temp2);
 				break;
 		}
 	}
@@ -967,10 +944,7 @@ void chunkString(string_t *str, stack_t *s)
 				// End chunk
 				if (chunkLen && !commentLen && !braces)
 				{
-					// TODO: Push chunk to stack
 					pushString(tmpStack, str->charAt, i - chunkLen, 0, 0, chunkLen);
-					
-					// TODO: reset chunkLen
 					chunkLen = 0;
 				}
 
@@ -1005,11 +979,9 @@ void chunkString(string_t *str, stack_t *s)
 				// There are no braces and there is a chunk
 				if (!braces && chunkLen)
 				{
-					// TODO: Push chunk to stack
 					pushString(tmpStack, str->charAt, i - chunkLen - commentLen,
 						commentStart, commentStart + commentLen, chunkLen);
 					
-					// TODO: reset chunkLen
 					chunkLen = commentLen = commentStart = 0;
 				}
 
@@ -1027,11 +999,9 @@ void chunkString(string_t *str, stack_t *s)
 				// Close brace and check if chunk is closed too
 				if (!--braces)
 				{
-					// TODO: Push chunk to stack
 					pushString(tmpStack, str->charAt, i - chunkLen - commentLen + 1,
 						commentStart, commentStart + commentLen, chunkLen);
 					
-					// TODO: reset chunkLen
 					chunkLen = commentLen = commentStart = 0;
 				}
 				break;
@@ -1043,11 +1013,9 @@ void chunkString(string_t *str, stack_t *s)
 				{
 					if (chunkLen)
 					{
-						// TODO: Push chunk to stack
 						pushString(tmpStack, str->charAt, i - chunkLen - commentLen,
 							commentStart, commentStart + commentLen, chunkLen);
 						
-						// TODO: reset chunkLen
 						chunkLen = commentLen = commentStart = 0;
 					}
 					push(tmpStack, "\n");
@@ -1055,7 +1023,6 @@ void chunkString(string_t *str, stack_t *s)
 				break;
 			
 			case ESCAPE:
-				// TODO:
 				// Check if has next character
 				if (i + 1 > str->length)
 				{
@@ -1063,7 +1030,6 @@ void chunkString(string_t *str, stack_t *s)
 					// Break out of loop..
 				}
 
-				// TODO:
 				// If next character is special character (%, {, }, \, #)
 				if (isSpecialCharacter(str->charAt[i + 1]))
 				{
@@ -1073,11 +1039,9 @@ void chunkString(string_t *str, stack_t *s)
 
 				else if (chunkLen && !braces)
 				{
-					// TODO: Push chunk to stack
 					pushString(tmpStack, str->charAt, i - chunkLen - commentLen,
 						commentStart, commentStart + commentLen, chunkLen);
 					
-					// TODO: reset chunkLen
 					chunkLen = commentLen = commentStart = 0;
 				}
 				
@@ -1093,7 +1057,7 @@ void chunkString(string_t *str, stack_t *s)
 		// TODO: verify BRACES is not negative
 	}
 
-	if (chunkLen) // TODO: And validate braces/invalidc syntax for escp. char
+	if (chunkLen) // TODO: And validate braces/invalidc syntax for ESC char
 	{
 		pushString(tmpStack, str->charAt, i - chunkLen - commentLen,
 			commentStart, commentStart + commentLen, chunkLen);
@@ -1110,7 +1074,7 @@ string_t *readFile(char *filename)
 	int fLen;
 		
 	if (!(fp = fopen(filename, "r")))
-		DIE("%s", "Invalid file");
+		DIE("%s%s%s", "Invalid initial file (", filename, ")\n");
 
 	// Get the length of the file
 	fLen = getFileLength(fp);
@@ -1176,7 +1140,10 @@ string_t *readFiles(string_t *str, char *filename)
 	char *tmp = str->charAt;
 
 	if (!(fp = fopen(filename, "r")))
-		return str; // TODO: Error opening file (filename)
+	{
+		WARN("%s%s%s", "Unable to open file ", filename, "!\n");
+		return str;
+	}
 
 	// Get the length of the file
 	fLen = getFileLength(fp);
